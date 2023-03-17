@@ -15,6 +15,7 @@
     "node-redis": "^0.1.7",
     "winston": "^3.8.2",
     "wormhole-relayer": "file:../relayer",
+    "lodash.template": "^4.5.0",
     "yargs": "^17.7.1"
   },
   "keywords": [],
@@ -23,6 +24,7 @@
   "devDependencies": {
     "@types/koa-router": "^7.4.4",
     "@types/yargs": "^17.0.22",
+    "@types/lodash.template": "^4.5.1",
     "prettier": "^2.8.4"
   }
 }

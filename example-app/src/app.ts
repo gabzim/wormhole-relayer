@@ -1,5 +1,5 @@
 import yargs from "yargs";
-import * as Koa from "koa";
+import Koa from "koa";
 import {
   Context,
   Environment,
@@ -28,12 +28,14 @@ import { rootLogger } from "./log";
 import { ApiController } from "./controller";
 import { Logger } from "winston";
 import { sourceTx, SourceTxContext } from "../../relayer/middleware/source-tx.context";
+import { explorerLinks, ExplorerLinksContext } from "../../relayer/middleware/explorer-links.middleware";
 
 export type MyRelayerContext = LoggingContext &
   StorageContext &
   SourceTxContext &
   TokenBridgeContext &
   StagingAreaContext &
+  ExplorerLinksContext &
   WalletContext;
 
 const privateKeys = {
@@ -70,6 +72,7 @@ async function main() {
 
   // let contractAddresses = {
   //   [CHAIN_ID_SOLANA]: ["DZnkkTmCiFWfYTfT41X3Rd1kDgozqzxWaHqsw6W4x2oe"],
+  //   [CHAIN_ID_SOLANA]: ["myNextSolanaAddress3Rd1kDgozqzxWaHqsw6W4x2oe"],
   // };
   // app.multiple(contractAddresses, fundsCtrl.processFundsTransfer);
 
