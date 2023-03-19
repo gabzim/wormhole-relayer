@@ -32,10 +32,14 @@ import {
   SourceTxContext,
 } from "../../relayer/middleware/source-tx.middleware";
 import { batchVaas } from "../../relayer/middleware/batch/batch-vaa.middleware";
-import { coreLayerContracts } from "../../relayer/middleware/core-layer.middleware";
+import {
+  CoreLayerContext,
+  coreLayerContracts,
+} from "../../relayer/middleware/core-layer.middleware";
 
 export type MyRelayerContext = LoggingContext &
   StorageContext &
+  CoreLayerContext &
   SourceTxContext &
   TokenBridgeContext &
   StagingAreaContext &
