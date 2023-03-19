@@ -2,7 +2,7 @@ import { Environment, RelayerApp, RelayerAppOpts } from "./application";
 import { LoggingContext } from "./middleware/logger.middleware";
 import { ProvidersOpts } from "./middleware/providers.middleware";
 import { WalletContext } from "./middleware/wallet/wallet.middleware";
-import { TokenBridgeContext } from "./middleware/tokenBridge.middleware";
+import { TokenBridgeContext } from "./middleware/token-bridge.middleware";
 import { StagingAreaContext } from "./middleware/staging-area.middleware";
 import { Logger } from "winston";
 import { StorageContext } from "./storage";
@@ -23,7 +23,7 @@ export interface StandardRelayerAppOpts extends RelayerAppOpts {
     redisClusterEndpoints?: ClusterNode[];
     redisCluster?: ClusterOptions;
     redis?: RedisOptions;
-    fetchSourceTxhash: boolean;
+    fetchSourceTxhash?: boolean;
 }
 export type StandardRelayerContext = LoggingContext & StorageContext & TokenBridgeContext & StagingAreaContext & WalletContext & SourceTxContext;
 export declare class StandardRelayerApp<ContextT extends StandardRelayerContext = StandardRelayerContext> extends RelayerApp<ContextT> {

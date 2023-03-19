@@ -57,12 +57,6 @@ export interface TokenBridgeContext extends ProviderContext {
   };
 }
 
-export type ChainConfigInfo = {
-  evm: {
-    [k in EVMChainId]: { contracts: ITokenBridge[] };
-  };
-};
-
 function instantiateReadEvmContracts(
   env: Environment,
   chainRpcs: Partial<Record<EVMChainId, ethers.providers.JsonRpcProvider[]>>
@@ -83,6 +77,9 @@ function instantiateReadEvmContracts(
 }
 
 function isTokenBridgeVaa(env: Environment, vaa: ParsedVaa): boolean {
+  if (!vaa) {
+    return false;
+  }
   let chainId = vaa.emitterChain as ChainId;
   const chainName = CHAIN_ID_TO_NAME[chainId];
 
@@ -101,7 +98,7 @@ function isTokenBridgeVaa(env: Environment, vaa: ParsedVaa): boolean {
 }
 
 export function tokenBridgeContracts(): Middleware<TokenBridgeContext> {
-  let evmContracts: Partial<{[k in EVMChainId]: ITokenBridge[]}>;
+  let evmContracts: Partial<{ [k in EVMChainId]: ITokenBridge[] }>;
   return async (ctx: TokenBridgeContext, next) => {
     if (!ctx.providers) {
       throw new UnrecoverableError(
@@ -110,10 +107,7 @@ export function tokenBridgeContracts(): Middleware<TokenBridgeContext> {
     }
     if (!evmContracts) {
       ctx.logger?.debug(`Token Bridge Contracts initializing...`);
-      evmContracts = instantiateReadEvmContracts(
-        ctx.env,
-        ctx.providers.evm
-      );
+      evmContracts = instantiateReadEvmContracts(ctx.env, ctx.providers.evm);
       ctx.logger?.debug(`Token Bridge Contracts initialized`);
     }
     ctx.tokenBridge = {

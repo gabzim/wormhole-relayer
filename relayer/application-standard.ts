@@ -1,12 +1,12 @@
 import { Environment, RelayerApp, RelayerAppOpts } from "./application";
 import { logging, LoggingContext } from "./middleware/logger.middleware";
-import { missedVaas } from "./middleware/missedVaas.middleware";
+import { missedVaas } from "./middleware/missed-vaas.middleware";
 import { providers, ProvidersOpts } from "./middleware/providers.middleware";
 import { WalletContext, wallets } from "./middleware/wallet/wallet.middleware";
 import {
   TokenBridgeContext,
   tokenBridgeContracts,
-} from "./middleware/tokenBridge.middleware";
+} from "./middleware/token-bridge.middleware";
 import {
   stagingArea,
   StagingAreaContext,

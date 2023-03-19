@@ -14,9 +14,11 @@ export function logging(logger: Logger): Middleware<LoggingContext> {
           emitterAddress: ctx.vaa.emitterAddress.toString("hex"),
           sequence: ctx.vaa.sequence,
         })
+      : ctx.batchVaa
+      ? logger.child({})
       : logger;
 
-    ctx.logger.debug(`Starting VAA processing`);
+    ctx.logger.debug(`Starting ${ctx.batchVaa ? "Batch" : ""} VAA processing`);
     try {
       await next();
     } catch (e) {

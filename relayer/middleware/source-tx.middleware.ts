@@ -15,31 +15,49 @@ export interface SourceTxContext extends Context {
 
 const defaultOptsByEnv = {
   [Environment.MAINNET]: {
-    wormscanEndpoint: "https://api.wormscan.io"
+    wormscanEndpoint: "https://api.wormscan.io",
+    retries: 5,
   },
   [Environment.TESTNET]: {
-    wormscanEndpoint: "https://api.testnet.wormscan.io"
+    wormscanEndpoint: "https://api.testnet.wormscan.io",
+    retries: 5,
   },
   [Environment.DEVNET]: {
-    wormscanEndpoint: ""
-  }
+    wormscanEndpoint: "",
+    retries: 5,
+  },
 };
 
-export function sourceTx(optsWithoutDefaults?: SourceTxOpts): Middleware<SourceTxContext> {
+export function sourceTx(
+  optsWithoutDefaults?: SourceTxOpts
+): Middleware<SourceTxContext> {
   let opts: SourceTxOpts;
   return async (ctx, next) => {
     if (!opts) {
       opts = Object.assign({}, defaultOptsByEnv[ctx.env], optsWithoutDefaults);
     }
+    if (!ctx.vaa) {
+      ctx.sourceTxHash = ctx.batchVaa?.transactionId;
+      await next();
+      return;
+    }
 
-    const {emitterChain, emitterAddress, sequence} = ctx.vaa;
+    const { emitterChain, emitterAddress, sequence } = ctx.vaa;
     let attempt = 0;
     let txHash = "";
     do {
       try {
-        txHash = await fetchVaaHash(opts.wormscanEndpoint, emitterChain, emitterAddress, sequence);
+        txHash = await fetchVaaHash(
+          opts.wormscanEndpoint,
+          emitterChain,
+          emitterAddress,
+          sequence
+        );
       } catch (e) {
-        ctx.logger?.error(`could not obtain txHash, attempt: ${attempt} of ${opts.retries}.`, e);
+        ctx.logger?.error(
+          `could not obtain txHash, attempt: ${attempt} of ${opts.retries}.`,
+          e
+        );
         await sleep(attempt * 100); // linear wait
       }
     } while (attempt < opts.retries && txHash === "");
@@ -48,11 +66,19 @@ export function sourceTx(optsWithoutDefaults?: SourceTxOpts): Middleware<SourceT
   };
 }
 
-
-async function fetchVaaHash(baseEndpoint: string, emitterChain: number, emitterAddress: Buffer, sequence: bigint) {
-  const res = await fetch(`${baseEndpoint}/api/v1/vaas/${emitterChain}/${emitterAddress.toString("hex")}/${sequence.toString()}`);
+async function fetchVaaHash(
+  baseEndpoint: string,
+  emitterChain: number,
+  emitterAddress: Buffer,
+  sequence: bigint
+) {
+  const res = await fetch(
+    `${baseEndpoint}/api/v1/vaas/${emitterChain}/${emitterAddress.toString(
+      "hex"
+    )}/${sequence.toString()}`
+  );
   if (res.status === 404) {
-    throw new Error("Not found yet.")
+    throw new Error("Not found yet.");
   } else if (res.status > 500) {
     throw new Error(`Got: ${res.status}`);
   }

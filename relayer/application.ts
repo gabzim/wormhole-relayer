@@ -4,6 +4,7 @@ import {
   ChainId,
   CONTRACTS,
   getSignedVAAWithRetry,
+  parse,
 } from "@certusone/wormhole-sdk";
 import {
   compose,
@@ -28,6 +29,10 @@ import { UnrecoverableError } from "bullmq";
 import { encodeEmitterAddress, mergeDeep, sleep } from "./utils";
 import * as grpcWebNodeHttpTransport from "@improbable-eng/grpc-web-node-http-transport";
 import { defaultLogger } from "./logging";
+import {
+  parseSyntheticBatchVaa,
+  SyntheticBatchVaa,
+} from "./middleware/batch/batch.model";
 
 export enum Environment {
   MAINNET = "mainnet",
@@ -51,9 +56,11 @@ export const defaultWormholeRpcs = {
   [Environment.DEVNET]: [""],
 };
 
+const BatchVaaVersionNumber = 2;
+
 const defaultOpts = (env: Environment): RelayerAppOpts => ({
   wormholeRpcs: defaultWormholeRpcs[env],
-  concurrency: 1
+  concurrency: 1,
 });
 
 export class RelayerApp<ContextT extends Context> {
@@ -72,7 +79,7 @@ export class RelayerApp<ContextT extends Context> {
     public env: Environment = Environment.TESTNET,
     opts: RelayerAppOpts = {}
   ) {
-    this.opts = mergeDeep({},defaultOpts( env ), opts);
+    this.opts = mergeDeep({}, defaultOpts(env), opts);
   }
 
   multiple(
@@ -113,38 +120,53 @@ export class RelayerApp<ContextT extends Context> {
   async fetchVaa(
     chain: ChainId | string,
     emitterAddress: Buffer | string,
-    sequence: bigint | string
-  ) {
-    return await getSignedVAAWithRetry(
+    sequence: bigint | string,
+    retryAttempts: number = 3,
+    retryTimeout: number = 200
+  ): Promise<Buffer> {
+    const vaa = await getSignedVAAWithRetry(
       this.opts.wormholeRpcs,
       Number(chain) as ChainId,
       emitterAddress.toString("hex"),
       sequence.toString(),
       { transport: grpcWebNodeHttpTransport.NodeHttpTransport() },
-      100,
-      2
+      retryTimeout,
+      retryAttempts
     );
+
+    return Buffer.from(vaa.vaaBytes);
   }
 
   async processVaa(vaa: Buffer, opts?: any) {
+    const isBatch = vaa.readUint8(0) === BatchVaaVersionNumber; // first byte is the payload version
     if (this.storage) {
-      await this.storage.addVaaToQueue(vaa);
+      await (isBatch
+        ? this.storage.addBatchVaaToQueue(vaa)
+        : this.storage.addVaaToQueue(vaa));
     } else {
       this.pushVaaThroughPipeline(vaa).catch((err) => {}); // error already handled by middleware, catch to swallow remaining error.
     }
   }
 
   async pushVaaThroughPipeline(vaa: Buffer, opts?: any): Promise<void> {
-    const parsedVaa = wormholeSdk.parseVaa(vaa);
     let ctx: Context = {
-      vaa: parsedVaa,
-      vaaBytes: vaa,
       env: this.env,
       processVaa: this.processVaa.bind(this),
+      fetchVaa: this.fetchVaa.bind(this),
       config: {
         spyFilters: await this.spyFilters(),
       },
     };
+    const version = vaa.readUint8(0);
+    // TODO batch should also be a buffer and we should inspect the first byte to see the vaa version.
+    if (version === 1) {
+      const parsedVaa = wormholeSdk.parseVaa(vaa);
+      ctx.vaa = parsedVaa;
+      ctx.vaaBytes = vaa;
+    } else {
+      const batchVaa = parseSyntheticBatchVaa(vaa);
+      ctx.batchVaa = batchVaa;
+    }
     Object.assign(ctx, opts);
     try {
       await this.pipeline?.(ctx, () => {});
@@ -209,7 +231,10 @@ export class RelayerApp<ContextT extends Context> {
     serverAdapter.setBasePath(path);
 
     createBullBoard({
-      queues: [new BullMQAdapter(this.storage.vaaQueue)],
+      queues: [
+        new BullMQAdapter(this.storage.vaaQueue),
+        new BullMQAdapter(this.storage.batchVaaQueue),
+      ],
       serverAdapter: serverAdapter,
     });
 
@@ -218,6 +243,21 @@ export class RelayerApp<ContextT extends Context> {
 
   private generateChainRoutes(): Middleware<ContextT> {
     let chainRouting = async (ctx: ContextT, next: Next) => {
+      if (!ctx.vaa) {
+        if (!ctx.batchVaa) {
+          await next();
+        }
+        // if one of the vaas in the batch matches, send it down that pipeline
+        for (const vaa of ctx.batchVaa.vaas) {
+          let router = this.chainRouters[vaa.emitterChain as ChainId];
+          if (!router) {
+            continue;
+          }
+          const newCtx = Object.assign({}, ctx, { vaa });
+          await router.process(newCtx, next);
+        }
+        return;
+      }
       let router = this.chainRouters[ctx.vaa.emitterChain as ChainId];
       if (!router) {
         this.rootLogger.error(
@@ -244,6 +284,7 @@ export class RelayerApp<ContextT extends Context> {
     }
 
     this.storage?.startWorker();
+    this.storage?.startBatchWorker();
 
     while (true) {
       const client = createSpyRPCServiceClient(this.spyUrl!);
@@ -302,11 +343,14 @@ class ChainRouter<ContextT extends Context> {
   }
 
   async process(ctx: ContextT, next: Next): Promise<void> {
+    if (!ctx.vaa) {
+      if (!ctx.batchVaa) {
+        await next();
+        return;
+      }
+    }
     let addr = ctx.vaa!.emitterAddress.toString("hex");
     let handler = this._addressHandlers[addr];
-    if (!handler) {
-      throw new Error("route undefined");
-    }
     return handler?.(ctx, next);
   }
 }

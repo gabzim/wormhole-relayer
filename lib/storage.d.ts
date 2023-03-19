@@ -23,17 +23,25 @@ export type JobData = {
     parsedVaa: any;
     vaaBytes: string;
 };
+export type JobBatchData = {
+    parsedVaas: any[];
+    vaaBytes: string;
+};
 export declare class Storage<T extends Context> {
     private relayer;
     private opts;
     logger: Logger;
     vaaQueue: Queue<JobData, string[], string>;
+    batchVaaQueue: Queue<JobBatchData, string[], string>;
     private worker;
     private readonly prefix;
     private readonly redis;
+    private batchWorker;
     constructor(relayer: RelayerApp<T>, opts: StorageOptions);
     addVaaToQueue(vaaBytes: Buffer): Promise<Job<JobData, string[], string>>;
+    addBatchVaaToQueue(vaa: Buffer): Promise<Job<JobBatchData, string[], string>>;
     private vaaId;
     startWorker(): void;
+    startBatchWorker(): void;
     stopWorker(): Promise<void>;
 }

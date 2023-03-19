@@ -3,7 +3,17 @@ import { ParsedVaa, parseVaa } from "@certusone/wormhole-sdk";
 import { RelayerApp } from "./application";
 import { Context } from "./context";
 import { Logger } from "winston";
-import { Cluster, ClusterNode, ClusterOptions, Redis, RedisOptions } from "ioredis";
+import {
+  Cluster,
+  ClusterNode,
+  ClusterOptions,
+  Redis,
+  RedisOptions,
+} from "ioredis";
+import {
+  parseSyntheticBatchVaa,
+  SyntheticBatchVaa,
+} from "./middleware/batch/batch.model";
 
 function serializeVaa(vaa: ParsedVaa) {
   return {
@@ -61,13 +71,16 @@ export interface StorageOptions {
 }
 
 export type JobData = { parsedVaa: any; vaaBytes: string };
+export type JobBatchData = { parsedVaas: any[]; vaaBytes: string };
 
 export class Storage<T extends Context> {
   logger: Logger;
   vaaQueue: Queue<JobData, string[], string>;
+  batchVaaQueue: Queue<JobBatchData, string[], string>;
   private worker: Worker<JobData, string[], string>;
   private readonly prefix: string;
   private readonly redis: Cluster | Redis;
+  private batchWorker: Worker<JobBatchData, string[], string>;
 
   constructor(private relayer: RelayerApp<T>, private opts: StorageOptions) {
     this.prefix = `{${opts.namespace ?? opts.queueName}}`;
@@ -81,18 +94,46 @@ export class Storage<T extends Context> {
       prefix: this.prefix,
       connection: this.redis,
     });
+    this.batchVaaQueue = new Queue(opts.queueName + `-batch`, {
+      prefix: this.prefix,
+      connection: this.redis,
+    });
   }
 
   async addVaaToQueue(vaaBytes: Buffer) {
     const parsedVaa = parseVaa(vaaBytes);
     const id = this.vaaId(parsedVaa);
     const idWithoutHash = id.substring(0, id.length - 6);
-    this.logger?.debug(`Adding VAA to queue`, {emitterChain: parsedVaa.emitterChain, emitterAddress: parsedVaa.emitterAddress.toString("hex"), sequence: parsedVaa.sequence.toString()});
+    this.logger?.debug(`Adding VAA to queue`, {
+      emitterChain: parsedVaa.emitterChain,
+      emitterAddress: parsedVaa.emitterAddress.toString("hex"),
+      sequence: parsedVaa.sequence.toString(),
+    });
     return this.vaaQueue.add(
       idWithoutHash,
       {
         parsedVaa: serializeVaa(parsedVaa),
         vaaBytes: vaaBytes.toString("base64"),
+      },
+      {
+        jobId: id,
+        removeOnComplete: 1000,
+        removeOnFail: 5000,
+        attempts: this.opts.attempts,
+      }
+    );
+  }
+  async addBatchVaaToQueue(vaa: Buffer) {
+    const batchVaa = parseSyntheticBatchVaa(vaa);
+    const lastTxHashDigits = batchVaa.transactionId.substring(
+      batchVaa.transactionId.length - 5
+    );
+    const id = `${batchVaa.emitterChain}-${lastTxHashDigits}`;
+    return this.batchVaaQueue.add(
+      id,
+      {
+        parsedVaas: batchVaa.vaas.map(serializeVaa),
+        vaaBytes: vaa.toString("base64"),
       },
       {
         jobId: id,
@@ -111,13 +152,20 @@ export class Storage<T extends Context> {
   }
 
   startWorker() {
-    this.logger?.debug(`Starting worker for queue: ${this.opts.queueName}. Prefix: ${this.prefix}.`);
+    const queueName = this.vaaQueue.name;
+    this.logger?.debug(
+      `Starting worker for queue: ${queueName}. Prefix: ${this.prefix}.`
+    );
     this.worker = new Worker(
-      this.opts.queueName,
+      queueName,
       async (job) => {
         let parsedVaa = job.data?.parsedVaa;
         if (parsedVaa) {
-          this.logger?.debug(`Starting job: ${job.id}`, {emitterChain: parsedVaa.emitterChain, emitterAddress: parsedVaa.emitterAddress.toString("hex"), sequence: parsedVaa.sequence.toString()});
+          this.logger?.debug(`Starting job: ${job.id}`, {
+            emitterChain: parsedVaa.emitterChain,
+            emitterAddress: parsedVaa.emitterAddress.toString("hex"),
+            sequence: parsedVaa.sequence.toString(),
+          });
         } else {
           this.logger.debug("Received job with no parsedVaa");
         }
@@ -129,7 +177,36 @@ export class Storage<T extends Context> {
         await job.updateProgress(100);
         return [""];
       },
-      { prefix: this.prefix, connection: this.redis, concurrency: this.opts.concurrency }
+      {
+        prefix: this.prefix,
+        connection: this.redis,
+        concurrency: this.opts.concurrency,
+      }
+    );
+  }
+
+  startBatchWorker() {
+    const queueName = this.batchVaaQueue.name;
+    this.logger?.debug(
+      `Starting worker for queue: ${queueName}. Prefix: ${this.prefix}.`
+    );
+    this.batchWorker = new Worker(
+      queueName,
+      async (job) => {
+        this.logger?.debug(`Starting job: ${job.id} for batch.`);
+        await job.log(`processing by..${this.worker.id}`);
+        let vaaBytes = Buffer.from(job.data.vaaBytes, "base64");
+        await this.relayer.pushVaaThroughPipeline(vaaBytes, {
+          storage: { job, worker: this.worker },
+        });
+        await job.updateProgress(100);
+        return [""];
+      },
+      {
+        prefix: this.prefix,
+        connection: this.redis,
+        concurrency: this.opts.concurrency,
+      }
     );
   }
 

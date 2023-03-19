@@ -14,8 +14,8 @@ import {
 import {
   TokenBridgeContext,
   tokenBridgeContracts,
-} from "wormhole-relayer/middleware/tokenBridge.middleware";
-import { missedVaas } from "wormhole-relayer/middleware/missedVaas.middleware";
+} from "wormhole-relayer/middleware/token-bridge.middleware";
+import { missedVaas } from "wormhole-relayer/middleware/missed-vaas.middleware";
 import { providers } from "wormhole-relayer/middleware/providers.middleware";
 import {
   stagingArea,
@@ -27,7 +27,12 @@ import { WalletContext } from "wormhole-relayer/middleware/wallet/wallet.middlew
 import { rootLogger } from "./log";
 import { ApiController } from "./controller";
 import { Logger } from "winston";
-import { sourceTx, SourceTxContext } from "../../relayer/middleware/source-tx.middleware";
+import {
+  sourceTx,
+  SourceTxContext,
+} from "../../relayer/middleware/source-tx.middleware";
+import { batchVaas } from "../../relayer/middleware/batch/batch-vaa.middleware";
+import { coreLayerContracts } from "../../relayer/middleware/core-layer.middleware";
 
 export type MyRelayerContext = LoggingContext &
   StorageContext &
@@ -55,9 +60,11 @@ async function main() {
   app.use(missedVaas(app, { namespace: "simple", logger: rootLogger }));
   app.use(providers());
   // app.use(wallets({ logger: rootLogger, namespace: "simple", privateKeys })); // <-- you need a valid private key to turn on this middleware
+  app.use(coreLayerContracts());
   app.use(tokenBridgeContracts());
   app.use(stagingArea());
   app.use(sourceTx());
+  app.use(batchVaas(app, { namespace: "simple" }));
 
   app
     .chain(CHAIN_ID_SOLANA)
@@ -65,6 +72,14 @@ async function main() {
       "DZnkkTmCiFWfYTfT41X3Rd1kDgozqzxWaHqsw6W4x2oe",
       fundsCtrl.processFundsTransfer
     );
+
+  // Uncomment to test batch vaas:
+  // app
+  //   .chain(CHAIN_ID_AVAX)
+  //   .address(
+  //     "0xdde6b89b7d0ad383fafde6477f0d300ec4d4033e",
+  //     fundsCtrl.processFundsTransfer
+  //   );
 
   // Another way to do it if you want to listen to multiple addresses on different chaints:
 
@@ -74,10 +89,11 @@ async function main() {
   // app.multiple(contractAddresses, fundsCtrl.processFundsTransfer);
 
   app.use(async (err, ctx, next) => {
-    ctx.logger.error("error middleware triggered");
+    ctx.logger.error("error middleware triggered", err);
   }); // <-- if you pass in a function with 3 args, it'll be used to process errors (whenever you throw from your middleware)
 
   app.listen();
+
   runUI(app, opts, rootLogger);
 }
 

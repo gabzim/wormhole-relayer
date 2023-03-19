@@ -41,7 +41,7 @@ export declare class RelayerApp<ContextT extends Context> {
         [k in ChainId]: string[];
     }>, ...middleware: Middleware<ContextT>[]): void;
     use(...middleware: Middleware<ContextT>[] | ErrorMiddleware<ContextT>[]): void;
-    fetchVaa(chain: ChainId | string, emitterAddress: Buffer | string, sequence: bigint | string): Promise<import("@certusone/wormhole-sdk-proto-web/lib/cjs/publicrpc/v1/publicrpc").GetSignedVAAResponse>;
+    fetchVaa(chain: ChainId | string, emitterAddress: Buffer | string, sequence: bigint | string, retryAttempts?: number, retryTimeout?: number): Promise<Buffer>;
     processVaa(vaa: Buffer, opts?: any): Promise<void>;
     pushVaaThroughPipeline(vaa: Buffer, opts?: any): Promise<void>;
     chain(chainId: ChainId): ChainRouter<ContextT>;
