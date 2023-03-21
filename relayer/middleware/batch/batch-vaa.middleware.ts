@@ -2,7 +2,9 @@ import { Middleware } from "../../compose.middleware";
 
 import {
   CHAIN_ID_TO_NAME,
+  ChainId,
   EVMChainId,
+  isEVMChain,
   tryNativeToHexString,
 } from "@certusone/wormhole-sdk";
 import { CoreLayerContext } from "../core-layer.middleware";
@@ -78,7 +80,11 @@ export function batchVaas(
   );
 
   return async (ctx, next) => {
-    if (!ctx.vaa || !ctx.vaa.nonce) {
+    if (
+      !ctx.vaa ||
+      !ctx.vaa.nonce ||
+      !isEVMChain(ctx.vaa.emitterChain as ChainId)
+    ) {
       //not a batch, skip this middleware
       await next();
       return;
