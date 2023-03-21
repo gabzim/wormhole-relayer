@@ -76,3 +76,6 @@ jspm_packages/
 .pnp.*
 
 .idea
+.vscode
+
+example-app/build/

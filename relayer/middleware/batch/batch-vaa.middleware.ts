@@ -81,8 +81,8 @@ export function batchVaas(
 
   return async (ctx, next) => {
     if (
-      !ctx.vaa ||
-      !ctx.vaa.nonce ||
+      !ctx.vaa &&
+      !ctx.vaa.nonce &&
       !isEVMChain(ctx.vaa.emitterChain as ChainId)
     ) {
       //not a batch, skip this middleware
