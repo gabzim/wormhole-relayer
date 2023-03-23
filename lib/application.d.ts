@@ -1,11 +1,12 @@
 /// <reference types="node" />
-import { ChainId, ChainName } from "@certusone/wormhole-sdk";
+import { ChainId, ChainName, ParsedVaa, SignedVaa } from "@certusone/wormhole-sdk";
 import { ErrorMiddleware, Middleware, Next } from "./compose.middleware";
 import { Context } from "./context";
 import { Logger } from "winston";
 import { Storage, StorageOptions } from "./storage";
 import { ChainID } from "@certusone/wormhole-spydk/lib/cjs/proto/publicrpc/v1/publicrpc";
 import { UnrecoverableError } from "bullmq";
+import { VaaId } from "./bundle-builder.helper";
 export declare enum Environment {
     MAINNET = "mainnet",
     TESTNET = "testnet",
@@ -16,11 +17,20 @@ export interface RelayerAppOpts {
     wormholeRpcs?: string[];
     concurrency?: number;
 }
+export type FetchaVaasOpts = {
+    ids?: VaaId[];
+    txHash?: string;
+    delayBetweenRequestsInMs?: number;
+    attempts?: number;
+};
 export declare const defaultWormholeRpcs: {
     mainnet: string[];
     testnet: string[];
     devnet: string[];
 };
+export interface ParsedVaaWithBytes extends ParsedVaa {
+    bytes: SignedVaa;
+}
 export declare class RelayerApp<ContextT extends Context> {
     env: Environment;
     private pipeline?;
@@ -38,10 +48,11 @@ export declare class RelayerApp<ContextT extends Context> {
     private opts;
     constructor(env?: Environment, opts?: RelayerAppOpts);
     multiple(chainsAndAddresses: Partial<{
-        [k in ChainId]: string[];
+        [k in ChainId]: string[] | string;
     }>, ...middleware: Middleware<ContextT>[]): void;
     use(...middleware: Middleware<ContextT>[] | ErrorMiddleware<ContextT>[]): void;
-    fetchVaa(chain: ChainId | string, emitterAddress: Buffer | string, sequence: bigint | string): Promise<import("@certusone/wormhole-sdk-proto-web/lib/cjs/publicrpc/v1/publicrpc").GetSignedVAAResponse>;
+    fetchVaas(opts: FetchaVaasOpts): Promise<ParsedVaaWithBytes[]>;
+    fetchVaa(chain: ChainId | string, emitterAddress: Buffer | string, sequence: bigint | string): Promise<ParsedVaaWithBytes>;
     processVaa(vaa: Buffer, opts?: any): Promise<void>;
     pushVaaThroughPipeline(vaa: Buffer, opts?: any): Promise<void>;
     chain(chainId: ChainId): ChainRouter<ContextT>;
