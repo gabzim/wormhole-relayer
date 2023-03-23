@@ -9,7 +9,7 @@ export interface Context {
     vaa?: ParsedVaa;
     vaaBytes?: Buffer;
     fetchVaa: FetchVaaFn;
-    fetchVaas: FetchVaaFn;
+    fetchVaas: FetchVaasFn;
     processVaa: (vaa: Buffer) => Promise<void>;
     env: Environment;
     logger?: Logger;
