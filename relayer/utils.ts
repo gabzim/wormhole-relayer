@@ -58,9 +58,6 @@ export function parseVaaWithBytes(bytes: SignedVaa): ParsedVaaWithBytes {
  * @param ...sources
  */
 export function mergeDeep<T>(target: Partial<T>, sources: Partial<T>[], maxDepth = 10): T {
-  console.log("target: ", target);
-  console.log("sources: ", sources);
-  console.log("sources length", sources.length)
   if (!sources.length || maxDepth === 0) {
     // @ts-ignore
     return target;
