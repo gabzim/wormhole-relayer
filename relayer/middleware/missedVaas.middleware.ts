@@ -55,7 +55,8 @@ export function missedVaas(
   setTimeout(() => startMissedVaaWorker(redisPool, app, opts), 100); // start worker once config is done.
 
   return async (ctx: Context, next) => {
-    const wormholeRpcs = opts.wormholeRpcs || defaultWormholeRpcs[ctx.env];
+    console.log(`Opts Wormhole rpcs: ${opts.wormholeRpcs}`);
+    const wormholeRpcs = opts.wormholeRpcs ?? defaultWormholeRpcs[ctx.env];
     console.log(`Wormhole rpcs: ${wormholeRpcs}`);
 
     let vaa = ctx.vaa;
@@ -211,7 +212,8 @@ async function startMissedVaaWorker(
   app: RelayerApp<any>,
   opts: MissedVaaOpts
 ) {
-  const wormholeRpcs = opts.wormholeRpcs || defaultWormholeRpcs[app.env];
+  console.log(`Opts Wormhole rpcs: ${opts.wormholeRpcs}`);
+  const wormholeRpcs = opts.wormholeRpcs ?? defaultWormholeRpcs[app.env];
   console.log(`Wormhole rpcs: ${wormholeRpcs}`);
   const logger = opts.logger;
 

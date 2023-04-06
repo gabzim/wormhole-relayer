@@ -69,6 +69,7 @@ export class StandardRelayerApp<
       redis,
       redisCluster,
       redisClusterEndpoints,
+      wormholeRpcs,
     } = opts;
     super(env, opts);
     this.spy(spyEndpoint);
@@ -89,6 +90,7 @@ export class StandardRelayerApp<
         redis,
         redisCluster,
         redisClusterEndpoints,
+        wormholeRpcs
       })
     );
     this.use(providers(opts.providers));
