@@ -56,6 +56,7 @@ export function missedVaas(
 
   return async (ctx: Context, next) => {
     const wormholeRpcs = opts.wormholeRpcs || defaultWormholeRpcs[ctx.env];
+    console.log(`Wormhole rpcs: ${wormholeRpcs}`);
 
     let vaa = ctx.vaa;
     if (!vaa) {
@@ -211,6 +212,7 @@ async function startMissedVaaWorker(
   opts: MissedVaaOpts
 ) {
   const wormholeRpcs = opts.wormholeRpcs || defaultWormholeRpcs[app.env];
+  console.log(`Wormhole rpcs: ${wormholeRpcs}`);
   const logger = opts.logger;
 
   while (true) {
