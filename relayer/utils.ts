@@ -58,11 +58,13 @@ export function parseVaaWithBytes(bytes: SignedVaa): ParsedVaaWithBytes {
  * @param ...sources
  */
 export function mergeDeep<T>(target: Partial<T>, ...sources: Partial<T>[]): T {
+  console.log(target, sources)
   if (!sources.length) {
     // @ts-ignore
     return target;
   }
   const source = sources.shift();
+  console.log(source)
 
   if (isObject(target) && isObject(source)) {
     for (const key in source) {
