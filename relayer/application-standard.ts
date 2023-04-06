@@ -60,7 +60,7 @@ export class StandardRelayerApp<
     const logger = opts.logger;
     delete opts.logger;
     // now we can merge
-    opts = mergeDeep({}, defaultOpts, opts);
+    opts = mergeDeep({}, [defaultOpts, opts]);
 
     const {
       privateKeys,
