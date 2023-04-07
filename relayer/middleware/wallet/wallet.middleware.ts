@@ -178,9 +178,17 @@ export function wallets(
       return [chainId, workerInfos];
     })
   );
-  const wallets = buildMonitoringFromPrivateKeys(env, opts.privateKeys);
 
+  const wallets = buildMonitoringFromPrivateKeys(env, opts.privateKeys);
   opts.logger?.info(JSON.stringify(wallets, null, 2));
+
+  if (opts.metrics) {
+    const exporter = new MultiWalletExporter(wallets, {
+      logger: opts.logger,
+      prometheus: { registry: opts.metrics.registry },
+    });
+    exporter.start();
+  }
 
   let executeFunction: ActionExecutor;
   return async (ctx: WalletContext, next) => {
@@ -200,13 +208,6 @@ export function wallets(
         opts.logger
       );
       ctx.logger?.debug(`Initialized wallets`);
-      if (opts.metrics) {
-        const exporter = new MultiWalletExporter(wallets, {
-          logger: opts.logger,
-          prometheus: { registry: opts.metrics.registry },
-        });
-        exporter.start();
-      }
     }
 
     ctx.logger?.debug("wallets attached to context");
