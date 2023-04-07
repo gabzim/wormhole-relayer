@@ -2,7 +2,10 @@ import * as bs58 from "bs58";
 import { ethers } from "ethers";
 import * as solana from "@solana/web3.js";
 import {
+  CHAIN_ID_BSC,
+  CHAIN_ID_CELO,
   CHAIN_ID_ETH,
+  CHAIN_ID_MOONBEAM,
   CHAIN_ID_SOLANA,
   CHAIN_ID_TO_NAME,
   ChainId,
@@ -20,7 +23,11 @@ import { MultiWalletExporter } from "@xlabs-xyz/wallet-monitor";
 import { Registry } from "prom-client";
 import { MultiWalletWatcherConfig } from "@xlabs-xyz/wallet-monitor/lib/multi-wallet-watcher";
 import { Environment } from "../../application";
-import { CHAIN_ID_AVAX } from "@certusone/wormhole-sdk/lib/cjs/utils/consts";
+import {
+  CHAIN_ID_AVAX,
+  CHAIN_ID_FANTOM,
+  CHAIN_ID_POLYGON,
+} from "@certusone/wormhole-sdk/lib/cjs/utils/consts";
 
 export type EVMWallet = ethers.Wallet;
 
@@ -117,6 +124,11 @@ const networks = {
     [CHAIN_ID_ETH]: "goerli",
     [CHAIN_ID_SOLANA]: "devnet",
     [CHAIN_ID_AVAX]: "testnet",
+    [CHAIN_ID_CELO]: "alfajores",
+    [CHAIN_ID_BSC]: "testnet",
+    [CHAIN_ID_POLYGON]: "mumbai",
+    [CHAIN_ID_FANTOM]: "testnet",
+    [CHAIN_ID_MOONBEAM]: "moonbase-alpha",
   },
   [Environment.DEVNET]: {},
 };
