@@ -32,7 +32,9 @@ export type MyRelayerContext = LoggingContext &
 
 // You need to read in your keys
 const privateKeys = {
-  [CHAIN_ID_SOLANA]: [process.env.SOLANA_KEY],
+  [CHAIN_ID_SOLANA]: [
+    "3gE6stQnNinp8R2RYkX3mpw5rBkZqgGNyd8A1PCs6z6ra9XaLmRaNXCxBNkUfVMYi4TobuMbt4vuQmk9VQVGoofw",
+  ], // you could do process.env.SOLANA_KEY
 };
 
 async function main() {
@@ -50,7 +52,7 @@ async function main() {
   app.use(missedVaas(app, { namespace: "simple", logger: rootLogger }));
   app.use(providers());
   app.use(
-    wallets({
+    wallets(env, {
       logger: rootLogger,
       namespace: "simple",
       privateKeys,
