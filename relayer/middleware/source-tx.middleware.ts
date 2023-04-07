@@ -3,6 +3,7 @@ import { Middleware } from "../compose.middleware";
 import { Context } from "../context";
 import { Environment } from "../application";
 import { sleep } from "../utils";
+import { ChainId, isEVMChain } from "@certusone/wormhole-sdk";
 
 export interface SourceTxOpts {
   wormscanEndpoint: string;
@@ -54,6 +55,12 @@ export function sourceTx(
         await sleep(attempt * 200); // linear wait
       }
     } while (attempt < opts.retries && txHash === "");
+    if (
+      isEVMChain(ctx.vaa.emitterChain as ChainId) &&
+      !txHash.startsWith("0x")
+    ) {
+      txHash = `0x${txHash}`;
+    }
     ctx.logger?.debug(
       txHash === ""
         ? "Could not retrive tx hash."
