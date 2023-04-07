@@ -21,6 +21,7 @@ import { CHAIN_ID_ETH, CHAIN_ID_SOLANA } from "@certusone/wormhole-sdk";
 import { rootLogger } from "./log";
 import { ApiController } from "./controller";
 import { Logger } from "winston";
+import { wallets } from "../../relayer";
 
 export type MyRelayerContext = LoggingContext &
   StorageContext &
@@ -30,9 +31,9 @@ export type MyRelayerContext = LoggingContext &
   WalletContext;
 
 // You need to read in your keys
-// const privateKeys = {
-//   [CHAIN_ID_ETH]: [process.env.ETH_KEY],
-// };
+const privateKeys = {
+  [CHAIN_ID_SOLANA]: [process.env.SOLANA_KEY],
+};
 
 async function main() {
   let opts: any = yargs(process.argv.slice(2)).argv;
@@ -48,7 +49,14 @@ async function main() {
   app.use(logging(rootLogger)); // <-- logging middleware
   app.use(missedVaas(app, { namespace: "simple", logger: rootLogger }));
   app.use(providers());
-  // app.use(wallets({ logger: rootLogger, namespace: "simple", privateKeys })); // <-- you need a valid private key to turn on this middleware
+  app.use(
+    wallets({
+      logger: rootLogger,
+      namespace: "simple",
+      privateKeys,
+      metrics: { registry: app.metricsRegistry },
+    })
+  ); // <-- you need a valid private key to turn on this middleware
   app.use(tokenBridgeContracts());
   app.use(stagingArea());
   app.use(sourceTx());
@@ -69,7 +77,7 @@ async function main() {
   // );
 
   app.use(async (err, ctx, next) => {
-    ctx.logger.error("error middleware triggered");
+    ctx.logger.error("error middleware triggered", err);
   }); // <-- if you pass in a function with 3 args, it'll be used to process errors (whenever you throw from your middleware)
 
   app.listen();
@@ -92,7 +100,7 @@ function runUI(relayer: RelayerApp<any>, { port }: any, logger: Logger) {
       return;
     }
 
-    ctx.body = await relayer.metricsRegistry().metrics();
+    ctx.body = await relayer.metricsRegistry.metrics();
   });
 
   port = Number(port) || 3000;
