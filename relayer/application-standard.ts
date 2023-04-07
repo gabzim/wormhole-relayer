@@ -40,6 +40,7 @@ const defaultOpts: Partial<StandardRelayerAppOpts> = {
   workflows: {
     retries: 3,
   },
+  redis: {},
   fetchSourceTxhash: true,
 };
 
