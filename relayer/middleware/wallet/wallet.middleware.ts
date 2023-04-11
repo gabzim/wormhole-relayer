@@ -17,7 +17,7 @@ import { WalletToolBox } from "./walletToolBox";
 import { Middleware } from "../../compose.middleware";
 import { spawnWalletWorker } from "./wallet.worker";
 import { Queue } from "@datastructures-js/queue";
-import { ProviderContext } from "../providers.middleware";
+import { ProviderContext, UntypedProvider } from "../providers.middleware";
 import { Logger } from "winston";
 import { MultiWalletExporter } from "@xlabs-xyz/wallet-monitor";
 import { Registry } from "prom-client";
@@ -36,7 +36,11 @@ export type SolanaWallet = {
   payer: solana.Keypair;
 };
 
-export type Wallet = EVMWallet | SolanaWallet;
+export type Wallet = EVMWallet | SolanaWallet | UntypedWallet;
+
+export type UntypedWallet = UntypedProvider & {
+  privateKey: string;
+};
 
 export interface Action<T, W extends Wallet> {
   chainId: ChainId;

@@ -1,4 +1,4 @@
-lib
+**/lib
 
 # Logs
 logs
@@ -79,3 +79,4 @@ jspm_packages/
 .pnp.*
 
 .idea
+.vscode

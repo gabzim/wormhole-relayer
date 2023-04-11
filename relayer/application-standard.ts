@@ -17,6 +17,7 @@ import { ChainId } from "@certusone/wormhole-sdk";
 import { ClusterNode, ClusterOptions, RedisOptions } from "ioredis";
 import { mergeDeep } from "./utils";
 import { sourceTx, SourceTxContext } from "./middleware/source-tx.middleware";
+import { defaultLogger } from "./logging";
 
 export interface StandardRelayerAppOpts extends RelayerAppOpts {
   name: string;
@@ -36,12 +37,12 @@ export interface StandardRelayerAppOpts extends RelayerAppOpts {
 }
 
 const defaultOpts: Partial<StandardRelayerAppOpts> = {
-  spyEndpoint: "localhost:7373",
+  spyEndpoint: "localhost:7073",
   workflows: {
     retries: 3,
   },
-  redis: {},
   fetchSourceTxhash: true,
+  logger: defaultLogger,
 };
 
 export type StandardRelayerContext = LoggingContext &
@@ -59,7 +60,7 @@ export class StandardRelayerApp<
     const logger = opts.logger;
     delete opts.logger;
     // now we can merge
-    opts = mergeDeep({}, defaultOpts, opts);
+    opts = mergeDeep({}, [defaultOpts, opts]);
 
     const {
       privateKeys,
@@ -68,6 +69,7 @@ export class StandardRelayerApp<
       redis,
       redisCluster,
       redisClusterEndpoints,
+      wormholeRpcs,
     } = opts;
     super(env, opts);
     this.spy(spyEndpoint);
@@ -88,9 +90,10 @@ export class StandardRelayerApp<
         redis,
         redisCluster,
         redisClusterEndpoints,
+        wormholeRpcs
       })
     );
-    this.use(providers());
+    this.use(providers(opts.providers));
     if (opts.privateKeys && Object.keys(opts.privateKeys).length) {
       this.use(
         wallets(env, {
