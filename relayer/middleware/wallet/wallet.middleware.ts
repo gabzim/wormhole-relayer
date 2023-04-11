@@ -155,8 +155,14 @@ function buildMonitoringFromPrivateKeys(
       }
     } else if (CHAIN_ID_SOLANA === chainId) {
       for (const key of keys) {
+        let secretKey;
+        try {
+          secretKey = new Uint8Array(JSON.parse(key));
+        } catch (e) {
+          secretKey = bs58.decode(key);
+        }
         addresses[
-          solana.Keypair.fromSecretKey(bs58.decode(key)).publicKey.toBase58()
+          solana.Keypair.fromSecretKey(secretKey).publicKey.toBase58()
         ] = [];
       }
     }

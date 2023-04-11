@@ -90,7 +90,14 @@ const defaultSupportedChains = {
       endpoints: ["https://fullnode.devnet.aptoslabs.com/v1"],
     },
   },
-  [Environment.DEVNET]: {},
+  [Environment.DEVNET]: {
+    [CHAIN_ID_ETH]: {
+      endpoints: ["http://localhost:8545/"],
+    },
+    [CHAIN_ID_BSC]: {
+      endpoints: ["http://localhost:8546/"],
+    },
+  },
 };
 
 /**

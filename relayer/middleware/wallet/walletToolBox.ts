@@ -19,7 +19,13 @@ export function createWalletToolbox(
   }
   switch (chainId) {
     case wh.CHAIN_ID_SOLANA:
-      return createSolanaWalletToolBox(providers, bs58.decode(privateKey));
+      let secretKey;
+      try {
+        secretKey = bs58.decode(privateKey);
+      } catch (e) {
+        secretKey = new Uint8Array(JSON.parse(privateKey));
+      }
+      return createSolanaWalletToolBox(providers, secretKey);
   }
 }
 
